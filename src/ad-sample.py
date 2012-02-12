@@ -186,16 +186,16 @@ Which computer resources would you like in the report?
             operating_system = wmi_1("Get-WmiObject Win32_OperatingSystem -Comp %s" % c)
             bios = wmi_1("Get-WmiObject Win32_BIOS -Comp %s" % c)
             device = {
-                'name'          : computer_system.get('Name'),
-                'manufacturer'  : computer_system.get('Manufacturer'),
-                'hardware'      : computer_system.get('Model'),
-                'memory'        : computer_system.get('TotalPhysicalMemory'),
-                'serial_no'     : bios.get('SerialNumber'),
-                'os'            : operating_system.get('Caption'),
-                'osver'         : operating_system.get('CSDVersion'),
-                'osmanufacturer': operating_system.get('Manufacturer'),
-                'osserial'      : operating_system.get('SerialNumber'),
-                'osverno'       : operating_system.get('Version'),
+                'name'          : to_ascii(computer_system.get('Name')),
+                'manufacturer'  : to_ascii(computer_system.get('Manufacturer')),
+                'hardware'      : to_ascii(computer_system.get('Model')),
+                'memory'        : to_ascii(computer_system.get('TotalPhysicalMemory')),
+                'serial_no'     : to_ascii(bios.get('SerialNumber')),
+                'os'            : to_ascii(operating_system.get('Caption')),
+                'osver'         : to_ascii(operating_system.get('CSDVersion')),
+                'osmanufacturer': to_ascii(operating_system.get('Manufacturer')),
+                'osserial'      : to_ascii(operating_system.get('SerialNumber')),
+                'osverno'       : to_ascii(operating_system.get('Version')),
             }
             post(API_DEVICE_URL, device)
 

@@ -11,6 +11,15 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ##############################################
 # queries active directorty for each computer
 # adds device and ip to device42 appliances
+#
+#   Requires:
+#       powershell
+#       ironpython
+#       .net 4
+#
+#   to run:
+#       ipy.exe ad-sample.py
+#
 ##############################################
 
 import types

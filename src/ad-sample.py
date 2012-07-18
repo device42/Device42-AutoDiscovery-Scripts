@@ -19,7 +19,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 #   to run:
 #       ipy.exe ad-sample.py
-#
+#   v2, Updated: 07-18-2012
 ##############################################
 
 import types
@@ -40,22 +40,7 @@ from System.Management.Automation import RunspaceInvoke
 # create a runspace to run shell commands from
 RUNSPACE = RunspaceInvoke()
 
-DOMAIN_ROLE = {
-        0:"Stand Alone Workstation",
-        1:"Member Workstation",
-        2:"Stand Alone Server",
-        3:"Member Server",
-        4:"Back-up Domain Controller",
-        5:"Primary Domain Controller",
-    }
-
-DRIVE_TYPE = {
-        2:"Floppy",
-        3:"Fixed Disk",
-        5:"Removable Media",
-    }
-
-BASE_URL='http://your-url-here'
+BASE_URL='https://your-url-here'
 
 API_DEVICE_URL=BASE_URL+'/api/device/'
 API_IP_URL    =BASE_URL+'/api/ip/'
@@ -154,7 +139,28 @@ def to_ascii(s):
         return s.encode('ascii','ignore')
     else:
         return str(s)
+def roundPow2(roundVal):
+    base2val = 1
+    while roundVal >= base2val:
+        base2val*=2
+    
+    # dont round up if there the same, just give the same vars
+    if roundVal == base2val/2:
+        return base2val/2 # Round down and round up.
+    
+    
+    smallRound = base2val/2
+    largeRound = base2val
+    
+    # closest to the base 2 value
+    diffLower = abs(roundVal - smallRound)
+    diffHigher = abs(roundVal - largeRound)
+    if diffLower < diffHigher:
+        mediumRound = smallRound
+    else:
+        mediumRound = largeRound
 
+    return mediumRound
 def main():
     banner="""\
 
@@ -185,18 +191,42 @@ Which computer resources would you like in the report?
             computer_system = wmi_1("Get-WmiObject Win32_ComputerSystem -Comp %s" % c)
             operating_system = wmi_1("Get-WmiObject Win32_OperatingSystem -Comp %s" % c)
             bios = wmi_1("Get-WmiObject Win32_BIOS -Comp %s" % c)
+            mem = roundPow2(int(computer_system.get('TotalPhysicalMemory')) / 1047552)
             device = {
-                'name'          : to_ascii(computer_system.get('Name')),
-                'manufacturer'  : to_ascii(computer_system.get('Manufacturer')),
-                'hardware'      : to_ascii(computer_system.get('Model')),
-                'memory'        : to_ascii(computer_system.get('TotalPhysicalMemory')),
-                'serial_no'     : to_ascii(bios.get('SerialNumber')),
+                'name'          : to_ascii(computer_system.get('Name')).lower(),
                 'os'            : to_ascii(operating_system.get('Caption')),
                 'osver'         : to_ascii(operating_system.get('CSDVersion')),
                 'osmanufacturer': to_ascii(operating_system.get('Manufacturer')),
                 'osserial'      : to_ascii(operating_system.get('SerialNumber')),
                 'osverno'       : to_ascii(operating_system.get('Version')),
+                'memory'        : mem,
             }
+            manufacturer = ''
+            for mftr in ['VMware, Inc.', 'Bochs', 'KVM', 'QEMU', 'Microsoft Corporation', 'Xen']:
+                if mftr == to_ascii(computer_system.get('Manufacturer')).strip():
+                    manufacturer = 'virtual'
+                    device.update({ 'manufacturer' : 'vmware', })
+                    break    
+            if manufacturer != 'virtual':
+                device.update({
+                    'manufacturer': to_ascii(computer_system.get('Manufacturer')).strip(),
+                    'hardware': to_ascii(computer_system.get('Model')).strip(),
+                    'serial_no': to_ascii(bios.get('SerialNumber')).strip(),
+                    })            
+            cpucount = 0
+            for cpu in wmi("Get-WmiObject Win32_Processor -Comp %s" % c):
+                cpucount += 1
+                cpuspeed = cpu.get('MaxClockSpeed')
+                cpucores = cpu.get('NumberOfCores')
+            if cpucount > 0:
+                
+                device.update({
+                    'cpucount': cpucount,
+                    'cpupower': cpuspeed,
+                    'cpucore':  cpucores,
+                    })
+            
+            
             post(API_DEVICE_URL, device)
 
             for ntwk in wmi("Get-WmiObject Win32_NetworkAdapterConfiguration -Comp %s | where{$_.IPEnabled -eq \"True\"}" % c):
@@ -204,9 +234,11 @@ Which computer resources would you like in the report?
                     ip = {
                         'ipaddress'  : ipaddr,
                         'macaddress' : ntwk.get('MACAddress'),
+                        'tag'        : ntwk.get('Description'),
                         'device'     : c,
                     }
-                    post(API_IP_URL, ip)
+                    try: post(API_IP_URL, ip)
+                    except: print 'Exception occured trying to upload info for IP: %s' % ipaddr
 
 if __name__=="__main__":
     main()

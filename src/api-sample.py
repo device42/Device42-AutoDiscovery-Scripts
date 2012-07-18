@@ -77,29 +77,70 @@ def to_ascii(s):
 
 def wmi(query):
     return [dict([(prop.Name, prop.Value) for prop in psobj.Properties]) for psobj in RUNSPACE.Invoke(query)]
+def roundPow2(roundVal):
+    base2val = 1
+    while roundVal >= base2val:
+        base2val*=2
+    
+    # dont round up if there the same, just give the same vars
+    if roundVal == base2val/2:
+        return base2val/2 # Round down and round up.
+    
+    
+    smallRound = base2val/2
+    largeRound = base2val
+    
+    # closest to the base 2 value
+    diffLower = abs(roundVal - smallRound)
+    diffHigher = abs(roundVal - largeRound)
+    if diffLower < diffHigher:
+        mediumRound = smallRound
+    else:
+        mediumRound = largeRound
 
+    return mediumRound
 def add_or_update_device():
     computer_system  = wmi('Get-WmiObject Win32_ComputerSystem -Namespace "root\CIMV2"')[0] # take first
     bios             = wmi('Get-WmiObject Win32_BIOS -Namespace "root\CIMV2"')[0]
     operating_system = wmi('Get-WmiObject Win32_OperatingSystem -Namespace "root\CIMV2"')[0]
-
+    mem = roundPow2(int(computer_system.get('TotalPhysicalMemory')) / 1047552)
+    dev_name = to_ascii(computer_system.get('Name')).lower()
     device = {
-        'name'          : to_ascii(computer_system.get('Name')),
-        'manufacturer'  : to_ascii(computer_system.get('Manufacturer')),
-        'hardware'      : to_ascii(computer_system.get('Model')),
-        'memory'        : str(computer_system.get('TotalPhysicalMemory')),
-        'serial_no'     : bios.get('SerialNumber'),
+        'name'          : dev_name,
+        'memory'        : mem,
         'os'            : to_ascii(operating_system.get('Caption')),
         'osver'         : operating_system.get('CSDVersion'),
         'osmanufacturer': to_ascii(operating_system.get('Manufacturer')),
         'osserial'      : operating_system.get('SerialNumber'),
         'osverno'       : operating_system.get('Version'),
     }
-
+    manufacturer = ''
+    for mftr in ['VMware, Inc.', 'Bochs', 'KVM', 'QEMU', 'Microsoft Corporation', 'Xen']:
+        if mftr == to_ascii(computer_system.get('Manufacturer')).strip():
+            manufacturer = 'virtual'
+            device.update({ 'manufacturer' : 'vmware', })
+            break    
+    if manufacturer != 'virtual':
+        device.update({
+            'manufacturer': to_ascii(computer_system.get('Manufacturer')).strip(),
+            'hardware': to_ascii(computer_system.get('Model')).strip(),
+            'serial_no': to_ascii(bios.get('SerialNumber')).strip(),
+            })    
+    cpucount = 0
+    for cpu in wmi('Get-WmiObject Win32_Processor  -Namespace "root\CIMV2"'):
+        cpucount += 1
+        cpuspeed = cpu.get('MaxClockSpeed')
+        cpucores = cpu.get('NumberOfCores')
+    if cpucount > 0:
+    
+        device.update({
+            'cpucount': cpucount,
+            'cpupower': cpuspeed,
+            'cpucore':  cpucores,
+            })
     post(API_DEVICE_URL, device)
 
-def add_or_update_ip():
-    computer_system               = wmi('Get-WmiObject Win32_ComputerSystem -Namespace "root\CIMV2"')[0]
+
     network_adapter_configuration = wmi('Get-WmiObject Win32_NetworkAdapterConfiguration -Namespace "root\CIMV2" | where{$_.IPEnabled -eq "True"}')
 
     for ntwk in network_adapter_configuration:
@@ -107,14 +148,14 @@ def add_or_update_ip():
             ip = {
                 'ipaddress'  : ipaddr,
                 'macaddress' : ntwk.get('MACAddress'),
-                'device'     : to_ascii(computer_system.get('Name')),
+                'tag'        : ntwk.get('Description'),
+                'device'     : dev_name,
             }
             post(API_IP_URL, ip)
 
 def main():
     try:
         add_or_update_device()
-        add_or_update_ip()
     except:
         traceback.print_exc()
 

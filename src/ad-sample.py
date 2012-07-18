@@ -192,8 +192,9 @@ Which computer resources would you like in the report?
             operating_system = wmi_1("Get-WmiObject Win32_OperatingSystem -Comp %s" % c)
             bios = wmi_1("Get-WmiObject Win32_BIOS -Comp %s" % c)
             mem = roundPow2(int(computer_system.get('TotalPhysicalMemory')) / 1047552)
+            dev_name = to_ascii(computer_system.get('Name')).lower()
             device = {
-                'name'          : to_ascii(computer_system.get('Name')).lower(),
+                'name'          : dev_name,
                 'os'            : to_ascii(operating_system.get('Caption')),
                 'osver'         : to_ascii(operating_system.get('CSDVersion')),
                 'osmanufacturer': to_ascii(operating_system.get('Manufacturer')),
@@ -235,7 +236,7 @@ Which computer resources would you like in the report?
                         'ipaddress'  : ipaddr,
                         'macaddress' : ntwk.get('MACAddress'),
                         'tag'        : ntwk.get('Description'),
-                        'device'     : c,
+                        'device'     : dev_name,
                     }
                     try: post(API_IP_URL, ip)
                     except: print 'Exception occured trying to upload info for IP: %s' % ipaddr

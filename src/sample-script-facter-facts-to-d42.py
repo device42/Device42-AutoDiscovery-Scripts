@@ -107,49 +107,61 @@ for infile in glob.glob( os.path.join(puppetdir, '*yaml') ):
 
     f.close()       
     device_name = to_ascii(d['clientcert'])  #using clientcert as the nodename here, you can change it to your liking.
+    os = to_ascii(d.get('operatingsystem', None))
+    osver = to_ascii(d.get('operatingsystemrelease', None))
     device = {
-        'name' : device_name,
-        'os' : to_ascii(d.get('operatingsystem', None)),
-        'osverno' :to_ascii(d['operatingsystemrelease']),
-    }
-    manufacturer = ''
-    for mftr in ['VMware, Inc.', 'Bochs', 'KVM', 'QEMU', 'Microsoft Corporation', 'Xen']:
-        if mftr == to_ascii(d['manufacturer']):
-            manufacturer = 'virtual'
-            device.update({ 'manufacturer' : 'vmware', })
-            break    
-    if manufacturer != 'virtual':
-        device.update({
-            'manufacturer' :  to_ascii(d['manufacturer']),
-            'hardware' : to_ascii(d['productname']),
-            'serial_no' : to_ascii(d['serialnumber']),  
-            })  
-    if d['memorysize'].split(' ')[1] == 'MB':
-        memory = roundPow2(int(float(d['memorysize'].split(' ')[0])))
-    else: memory = roundPow2(int(float(d['memorysize'].split(' ')[0])*1024))
-    cpucount = int(d['physicalprocessorcount'])
-    if cpucount == 0: cpucount = 1
-    cpucore = int(d['processorcount'])
-    
-    device.update({
-        'memory': memory,
+        'name' : device_name,}
+        
+    if os is not None: device.update({'os' : os,})
+    if osver is not None: device.update({'osverno' :osver,})
+    manufacturer = to_ascii(d.get('manufacturer', None)).strip()
+    if manufacturer is not None:
+        for mftr in ['VMware, Inc.', 'Bochs', 'KVM', 'QEMU', 'Microsoft Corporation', 'Xen']:
+            if mftr == manufacturer:
+                manufacturer = 'virtual'
+                device.update({ 'manufacturer' : 'vmware', })
+                break    
+        if manufacturer != 'virtual':
+            hw =  to_ascii(d.get('productname', None))
+            sn =  to_ascii(d.get('serialnumber', None))
+            
+            if hw is not None: device.update({
+                    'manufacturer' :  manufacturer,
+                    'hardware' : hw,
+                    })
+            if sn is not None: device.update({
+                    'serial_no' : sn,
+                }) 
+    mem_b = d.get('memorysize',None).split(' ')[1]
+    if mem_b is not None:
+        if mem_b == 'MB':
+            memory = roundPow2(int(float(d['memorysize'].split(' ')[0])))
+        else: memory = roundPow2(int(float(d['memorysize'].split(' ')[0])*1024))
+        device.update({'memory': memory,})
+    cpucount = int(d.get('physicalprocessorcount', None))
+    if cpucount is not None:
+        if cpucount == 0: cpucount = 1
+        cpucore = int(d.get('processorcount', None))
+        device.update({    
         'cpucount': cpucount,
         'cpucore': cpucore,        
         })
     
     post(API_DEVICE_URL, device)
-    interfaces =  d['interfaces'].split(',')
-    for interface in interfaces:
-        if not 'loopback' in interface.lower():
-            ipkey = 'ipaddress'+'_'+interface.replace(' ','').lower()
-            mackey  = 'macaddress'+'_'+interface.replace(' ','').lower()
-            try: macaddress = d[mackey]
-            except: macaddress = d.get('macaddress')
-            ip = {
-                'ipaddress' : d.get(ipkey, None),
-                'macaddress' : macaddress,
-                'device' : device_name,
-                'tag': interface.replace('_', ' ')
-                }
-            if ip.get('ipaddress') is not None and ip.get('ipaddress') != '127.0.0.1': post(API_IP_URL, ip)
+    interfaces =  d.get('interfaces',None).split(',')
+    if interfaces is not None:
+        for interface in interfaces:
+            if not 'loopback' in interface.lower():
+                ipkey = 'ipaddress'+'_'+interface.replace(' ','').lower()
+                mackey  = 'macaddress'+'_'+interface.replace(' ','').lower()
+                try: macaddress = d[mackey]
+                except: macaddress = d.get('macaddress', None)
+                ip = {
+                    'ipaddress' : d.get(ipkey, None),
+                    
+                    'device' : device_name,
+                    'tag': interface.replace('_', ' ')
+                    }
+                if macaddress is not None: ip.update({'macaddress' : macaddress,})
+                if ip.get('ipaddress') is not None and ip.get('ipaddress') != '127.0.0.1': post(API_IP_URL, ip)
 

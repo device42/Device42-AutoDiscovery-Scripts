@@ -21,7 +21,7 @@ import traceback
 import base64
 import re
 import subprocess
-
+import math
 
 ##### Change Following 5 lines to match your environment #####
 d42url = 'https://your-d42-url-here'
@@ -91,18 +91,18 @@ def linux():
     serial_no = subprocess.Popen(['sudo', '/usr/sbin/dmidecode', '-s', 'system-serial-number'], shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
     
     for mftr in ['VMware, Inc.', 'Bochs', 'KVM', 'QEMU', 'Microsoft Corporation', 'Xen']:
-        if mftr == to_ascii(manufacturer).rstrip():
+        if mftr == to_ascii(manufacturer).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").strip():
             manufacturer = 'virtual'
             device.update({ 'manufacturer' : 'vmware', })
             break    
     if manufacturer != 'virtual':
         device.update({
-            'manufacturer': to_ascii(manufacturer).rstrip(),
-            'hardware': to_ascii(hardware).rstrip(),
-            'serial_no': to_ascii(serial_no).rstrip(),
+            'manufacturer': to_ascii(manufacturer).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").strip(),
+            'hardware': to_ascii(hardware).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").strip(),
+            'serial_no': to_ascii(serial_no).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").strip(),
             })
     memory_total = subprocess.Popen(['grep', 'MemTotal', '/proc/meminfo'], shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0].replace(' ', '').replace('MemTotal:','').replace('kB','')
-    memory = roundPow2(int(memory_total)/1024)
+    memory = closest_memory_assumption(int(memory_total)/1024)
     cpucount = 0
     cpuinfo = subprocess.Popen(['dmidecode', '-s', 'processor-frequency'], shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
     for item in cpuinfo.split('\n'):
@@ -114,7 +114,7 @@ def linux():
     for item in coreinfo.split('\n'):
         if 'Core Count' in item:
             #corecount += 1
-            corecount = item.replace('Core Count: ', '')
+            corecount = item.replace('Core Count: ', '').strip()
     if corecount == 0: corecount = 1
     device.update({
         'cpucount': cpucount,
@@ -153,30 +153,14 @@ def linux():
                 result += post(API_IP_URL, ip)                
 
     print result    
-    
-    
-def roundPow2(roundVal):
-    base2val = 1
-    while roundVal >= base2val:
-        base2val*=2
-    
-    # dont round up if there the same, just give the same vars
-    if roundVal == base2val/2:
-        return base2val/2 # Round down and round up.
-    
-    
-    smallRound = base2val/2
-    largeRound = base2val
-    
-    # closest to the base 2 value
-    diffLower = abs(roundVal - smallRound)
-    diffHigher = abs(roundVal - largeRound)
-    if diffLower < diffHigher:
-        mediumRound = smallRound
-    else:
-        mediumRound = largeRound
+def closest_memory_assumption(v):
+    if v < 512: v = 128 * math.ceil(v / 128.0)
+    elif v < 1024: v = 256 * math.ceil(v / 256.0)
+    elif v < 4096: v = 512 * math.ceil(v / 512.0)
+    elif v < 8192: v = 1024 * math.ceil(v / 1024.0)
+    else: v = 2048 * math.ceil(v / 2048.0)
+    return int(v)
 
-    return mediumRound
 
 def main():
     try:

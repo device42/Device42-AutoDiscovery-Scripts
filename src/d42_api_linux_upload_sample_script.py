@@ -9,7 +9,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 ##############################################
-# v1.0.1 of linux script that
+# v1.0.3 of linux script that
 # gets system info on a *nix based system, parses it and
 # uploads to device42 appliance using APIs
 # tested on Redhat, Fedora and Ubuntu installations
@@ -104,6 +104,7 @@ def linux():
     memory_total = subprocess.Popen(['grep', 'MemTotal', '/proc/meminfo'], shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0].replace(' ', '').replace('MemTotal:','').replace('kB','')
     memory = closest_memory_assumption(int(memory_total)/1024)
     cpucount = 0
+    cpuspeed = ''
     cpuinfo = subprocess.Popen(['dmidecode', '-s', 'processor-frequency'], shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
     for item in cpuinfo.split('\n'):
         if 'MHz' in item:
@@ -119,10 +120,10 @@ def linux():
     device.update({
         'cpucount': cpucount,
         'cpucore': corecount,
-        'cpupower': cpuspeed,
         'memory': memory,
         })
-    
+    if cpuspeed != '': 
+        device.update({'cpupower': cpuspeed,})    
     result += post(API_DEVICE_URL, device)
     
     ipinfo = subprocess.Popen(['/sbin/ifconfig', '-a'], shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]

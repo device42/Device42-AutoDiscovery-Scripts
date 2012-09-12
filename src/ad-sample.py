@@ -19,7 +19,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #
 #   to run:
 #       ipy.exe ad-sample.py
-#   v2, Updated: 07-18-2012
+#   v2, Updated: 09-12-2012
 ##############################################
 
 import types

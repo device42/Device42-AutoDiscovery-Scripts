@@ -29,7 +29,7 @@ import urllib
 import urllib2
 import traceback
 import base64
-
+import math
 BASE_URL='http://your-url-here'
 
 API_DEVICE_URL=BASE_URL+'/api/device/'
@@ -77,33 +77,15 @@ def to_ascii(s):
 
 def wmi(query):
     return [dict([(prop.Name, prop.Value) for prop in psobj.Properties]) for psobj in RUNSPACE.Invoke(query)]
-def roundPow2(roundVal):
-    base2val = 1
-    while roundVal >= base2val:
-        base2val*=2
-    
-    # dont round up if there the same, just give the same vars
-    if roundVal == base2val/2:
-        return base2val/2 # Round down and round up.
-    
-    
-    smallRound = base2val/2
-    largeRound = base2val
-    
-    # closest to the base 2 value
-    diffLower = abs(roundVal - smallRound)
-    diffHigher = abs(roundVal - largeRound)
-    if diffLower < diffHigher:
-        mediumRound = smallRound
-    else:
-        mediumRound = largeRound
+def closest_memory_assumption(v):
+    return int(256 * math.ceil(v / 256.0))
 
-    return mediumRound
+
 def add_or_update_device():
     computer_system  = wmi('Get-WmiObject Win32_ComputerSystem -Namespace "root\CIMV2"')[0] # take first
     bios             = wmi('Get-WmiObject Win32_BIOS -Namespace "root\CIMV2"')[0]
     operating_system = wmi('Get-WmiObject Win32_OperatingSystem -Namespace "root\CIMV2"')[0]
-    mem = roundPow2(int(computer_system.get('TotalPhysicalMemory')) / 1047552)
+    mem = closest_memory_assumption(int(computer_system.get('TotalPhysicalMemory')) / 1047552)
     dev_name = to_ascii(computer_system.get('Name')).lower()
     device = {
         'name'          : dev_name,

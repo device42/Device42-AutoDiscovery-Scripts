@@ -25,6 +25,7 @@ import traceback
 import base64
 import sys
 import glob
+import math
 #Device42 URL and credentials
 BASE_URL='https://your-device42-url'  #Please make sure there is no / in the end
 
@@ -69,28 +70,13 @@ def to_ascii(s):
         return s.encode('ascii','ignore')
     else:
         return str(s)        
-def roundPow2(roundVal):
-    base2val = 1
-    while roundVal >= base2val:
-        base2val*=2
-    
-    # dont round up if there the same, just give the same vars
-    if roundVal == base2val/2:
-        return base2val/2 # Round down and round up.
-    
-    
-    smallRound = base2val/2
-    largeRound = base2val
-    
-    # closest to the base 2 value
-    diffLower = abs(roundVal - smallRound)
-    diffHigher = abs(roundVal - largeRound)
-    if diffLower < diffHigher:
-        mediumRound = smallRound
-    else:
-        mediumRound = largeRound
-
-    return mediumRound       
+def closest_memory_assumption(v):
+    if v < 512: v = 128 * math.ceil(v / 128.0)
+    elif v < 1024: v = 256 * math.ceil(v / 256.0)
+    elif v < 4096: v = 512 * math.ceil(v / 512.0)
+    elif v < 8192: v = 1024 * math.ceil(v / 1024.0)
+    else: v = 2048 * math.ceil(v / 2048.0)
+    return int(v)     
 for infile in glob.glob( os.path.join(puppetdir, '*yaml') ):       
     d = {}
            
@@ -135,8 +121,8 @@ for infile in glob.glob( os.path.join(puppetdir, '*yaml') ):
     mem_b = d.get('memorysize',None).split(' ')[1]
     if mem_b is not None:
         if mem_b == 'MB':
-            memory = roundPow2(int(float(d['memorysize'].split(' ')[0])))
-        else: memory = roundPow2(int(float(d['memorysize'].split(' ')[0])*1024))
+            memory = closest_memory_assumption(int(float(d['memorysize'].split(' ')[0])))
+        else: memory = closest_memory_assumption(int(float(d['memorysize'].split(' ')[0])*1024))
         device.update({'memory': memory,})
     cpucount = int(d.get('physicalprocessorcount', None))
     if cpucount is not None:

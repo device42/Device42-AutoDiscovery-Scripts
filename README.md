@@ -9,3 +9,4 @@ This project contains sample scripts to show how to use Device42 developer APIs 
    * ad-sample.py  : Can run against Active directory computers, servers or a given list and upload discovered systems' info to device42 appliance.
    * d42_api_linux_upload_sample_script.py : Runs on a single *nix based system and uploads info to device42 appliance.
    * sample-script-facter-facts-to-d42 : Runs on puppet master and uploads nodes info from facter fact files to device42 appliance.
+   * d42_api_solaris_sample_script.py: Runs on an individual solaris system and uploads info to device42 appliance.

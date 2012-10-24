@@ -9,7 +9,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 ##############################################
-# v1.0.0 Beta of solaris script that
+# v1.0.0P1 Beta of solaris script that
 # gets system info from a solaris system, parses it and
 # uploads to device42 appliance using APIs
 # tested on Solaris Sparc 10(sparc and x86)
@@ -165,7 +165,7 @@ else:
         API_DEVICE_URL = d42url + '/api/device/'
 name = subprocess.Popen(['hostname'], stdout = subprocess.PIPE)
 name = name.stdout.readlines()[0].strip("\n")
-if ignoreDomain: name = to_ascii(name).strip()
+if ignoreDomain: name = to_ascii(name).strip().split('.')[0]
 else: name = to_ascii(name).strip()
 device = {'name':name}
 device.update(cpu())
@@ -175,5 +175,6 @@ post(API_DEVICE_URL, device)
 i = {}
 for i in ip():
     i['device'] = name
+    if 'macaddress' in i: i['macaddress'] = ":".join([j.zfill(2) for j in i['macaddress'].split(":")]).lower()
     if i.get('ipaddress') is not None and i.get('ipaddress') != '127.0.0.1' and i.get('ipaddress') != '0.0.0.0': post(API_IP_URL, i)
 

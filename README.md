@@ -15,7 +15,7 @@ This project contains sample scripts to show how to use Device42 developer APIs 
 ### Requirement
 -----------------------------
    * python 2.7.x
-   * ad-sample and api-sample scripts require Poweshell 1.0 or Powershell 2.0.
+   * ad-sample and api-sample scripts require Poweshell 1.0 or Powershell 2.0 and IronPython 2.7.x.
    * linux_auto_disc_multi requires installation of paramiko library. Install: sudo pip install paramiko (or Ubuntu/Debian: sudo apt-get install python-paramiko)
 
 ### Usage
@@ -26,9 +26,9 @@ Follow the instructions in individual scripts. Instructions have been added as c
 
 ### Further Documentation
 ----------------------------
+    * For api-sample.py: [Device42 windows auto-discovery script doc](http://docs.device42.com/auto-discovery/auto-discover-windows-machinesingle-apis/)
+    * For ad-sample.py: [Device42 windows AD based auto-disc script doc](http://docs.device42.com/auto-discovery/auto-populate-windows-machines-ad-apis/)
 
-    * For api-sample.py: http://docs.device42.com/auto-discovery/auto-discover-windows-machinesingle-apis/
-    * For ad-sample.py: http://docs.device42.com/auto-discovery/auto-populate-windows-machines-ad-apis/
 
 
 

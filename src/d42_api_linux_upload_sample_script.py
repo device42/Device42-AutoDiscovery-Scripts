@@ -89,7 +89,7 @@ def linux():
     manufacturer = subprocess.Popen(['sudo', '/usr/sbin/dmidecode', '-s', 'system-manufacturer'], shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
     hardware = subprocess.Popen(['sudo', '/usr/sbin/dmidecode', '-s', 'system-product-name'], shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
     serial_no = subprocess.Popen(['sudo', '/usr/sbin/dmidecode', '-s', 'system-serial-number'], shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
-    
+    uuid = subprocess.Popen(['sudo', '/usr/sbin/dmidecode', '-s', 'system-uuid'], shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
     for mftr in ['VMware, Inc.', 'Bochs', 'KVM', 'QEMU', 'Microsoft Corporation', 'Xen']:
         if mftr == to_ascii(manufacturer).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").strip():
             manufacturer = 'virtual'
@@ -101,6 +101,7 @@ def linux():
             'hardware': to_ascii(hardware).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").strip(),
             'serial_no': to_ascii(serial_no).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").strip(),
             })
+    device.update({'uuid': to_ascii(uuid).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").rstrip()})
     memory_total = subprocess.Popen(['grep', 'MemTotal', '/proc/meminfo'], shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0].replace(' ', '').replace('MemTotal:','').replace('kB','')
     memory = closest_memory_assumption(int(memory_total)/1024)
     cpucount = 0

@@ -9,7 +9,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 ##############################################
-# v1.0.3 of linux script that
+# v1.0.4 of linux script that
 # gets system info on a *nix based system, parses it and
 # uploads to device42 appliance using APIs
 # tested on Redhat, Fedora and Ubuntu installations

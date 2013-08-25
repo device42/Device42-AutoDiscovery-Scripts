@@ -97,6 +97,8 @@ def post(params, what):
         error_response = e.read()
         if DEBUG: print e.code, error_response
         return False, error_response
+    except Exception,e:
+        return False, str(e)
 
 def grab_and_post_inventory_data(machine_name):
     try:
@@ -127,22 +129,21 @@ def grab_and_post_inventory_data(machine_name):
             serial_no = stdout.readlines()[0].rstrip()
             if serial_no and serial_no != '': devargs.update({'serial_no': serial_no})
 
-    if GET_HARDWARE_INFO:
-        stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-manufacturer")
-        if not stderr.readlines():
-            manufacturer = stdout.readlines()[0].rstrip()
-            if manufacturer and manufacturer != '':
-                for mftr in ['VMware, Inc.', 'Bochs', 'KVM', 'QEMU', 'Microsoft Corporation', 'Xen']:
-                    if mftr == to_ascii(manufacturer).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").strip():
-                        manufacturer = 'virtual'
-                        devargs.update({ 'type' : 'virtual', })
-                        break
-                if manufacturer != 'virtual':
-                    devargs.update({'manufacturer': to_ascii(manufacturer).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").strip()})
-                    stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-product-name")
-                    if not stderr.readlines():
-                        hardware = stdout.readlines()[0].rstrip()
-                        if hardware and hardware != '': devargs.update({'hardware': hardware})
+    stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-manufacturer")
+    if not stderr.readlines():
+        manufacturer = stdout.readlines()[0].rstrip()
+        if manufacturer and manufacturer != '':
+            for mftr in ['VMware, Inc.', 'Bochs', 'KVM', 'QEMU', 'Microsoft Corporation', 'Xen']:
+                if mftr == to_ascii(manufacturer).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").strip():
+                    manufacturer = 'virtual'
+                    devargs.update({ 'type' : 'virtual', })
+                    break
+            if manufacturer != 'virtual' and GET_HARDWARE_INFO:
+                devargs.update({'manufacturer': to_ascii(manufacturer).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").strip()})
+                stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-product-name")
+                if not stderr.readlines():
+                    hardware = stdout.readlines()[0].rstrip()
+                    if hardware and hardware != '': devargs.update({'hardware': hardware})
 
     if GET_OS_DETAILS:
         stdin, stdout, stderr = ssh.exec_command("/usr/bin/python -m platform")
@@ -216,9 +217,9 @@ def grab_and_post_inventory_data(machine_name):
                          }
                         ADDED, msg_ip = post(ip, 'ip')
                         if ADDED:
-                            print ipv4_address + ': ' + msg_ip['msg'][0]
+                            print ipv4_address + ': ' + str(msg_ip)
                         else:
-                            print ipv4_address + ': failed with message = ' + msg_ip['msg'][0]
+                            print ipv4_address + ': failed with message = ' + str(msg_ip)
                     if uploadipv6 and ('inet6 addr' in ipinfo[i+1] or 'inet6 addr' in ipinfo[i+2]):
                         if 'inet6 addr' in ipinfo[i+1]: ipv6_address = ipinfo[i+1].split()[2].split('/')[0]
                         else: ipv6_address = ipinfo[i+2].split()[2].split('/')[0]
@@ -230,11 +231,11 @@ def grab_and_post_inventory_data(machine_name):
                          }
                         ADDED, msg_ip = post(ip, 'ip')
                         if ADDED:
-                            print ipv6_address + ' : ' + msg_ip['msg'][0]
+                            print ipv6_address + ' : ' + str(msg_ip)
                         else:
-                            print ipv6_address + ': failed with message = ' + msg_ip['msg'][0]
+                            print ipv6_address + ': failed with message = ' + str(msg_ip)
     else:
-        print machine_name + ': failed with message: ' + msg
+        print machine_name + ': failed with message: ' + str(msg)
     ssh.close()
     return devargs
 

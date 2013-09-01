@@ -14,7 +14,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # tested on Redhat, Fedora and Ubuntu installations. Cent OS 5.x OS detection issue discussed below.
 # paramiko has a LGPL license that is included with the repository.
 # OS detection doesn't work correctly for CentOS 5.x, These show as redhat 5.x. Set GET_OS_DETAILS to False for CentOS 5.x based systems.
-# LINES 30-46 to match your environment and requirements. If used in conjuction with other auto-discovery methods, you can configure which info to ignore
+# LINES 30-47 to match your environment and requirements. If used in conjuction with other auto-discovery methods, you can configure which info to ignore
 #########################################################################################################################################################
 
 
@@ -35,6 +35,7 @@ LINUX_USER = 'USER'
 LINUX_PASSWORD = 'PASS'            #Change USE_KEY_FILE to False if using password. password for linux servers. not required if using key file.
 USE_KEY_FILE = False                #change this to true, if not using password.
 KEY_FILE = '/path/.ssh/id_rsa.pub' #key file name (with full path if not in same directory as the script)
+PORT = 22                          #ssh port to use
 TIMEOUT = 5                        #timeout in seconds for the ssh session
 GET_SERIAL_INFO = True
 GET_HARDWARE_INFO = True
@@ -102,8 +103,8 @@ def post(params, what):
 
 def grab_and_post_inventory_data(machine_name):
     try:
-        if not USE_KEY_FILE: ssh.connect(machine_name, username=LINUX_USER, password=LINUX_PASSWORD, timeout=TIMEOUT)
-        else: ssh.connect(machine_name, username=LINUX_USER, key_filename=KEY_FILE, timeout=TIMEOUT)
+        if not USE_KEY_FILE: ssh.connect(machine_name, port=PORT, username=LINUX_USER, password=LINUX_PASSWORD, timeout=TIMEOUT)
+        else: ssh.connect(machine_name, port=PORT, username=LINUX_USER, key_filename=KEY_FILE, timeout=TIMEOUT)
     except paramiko.AuthenticationException:
         print machine_name + ': authentication failed'
         return None

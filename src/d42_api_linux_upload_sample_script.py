@@ -123,7 +123,7 @@ def linux():
         coreinfo = subprocess.Popen(['sudo', 'dmidecode', '-t', 'processor'], shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).communicate()[0]
         for item in coreinfo.split('\n'):
             if 'Core Count' in item:
-                corecount = item.replace('Core Count: ', '').strip()
+                corecount = int(item.replace('Core Count: ', '').strip())
                 break
         if corecount == 0: corecount = 1
 

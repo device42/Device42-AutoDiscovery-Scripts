@@ -14,7 +14,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 # tested on Redhat, Fedora and Ubuntu installations. Cent OS 5.x OS detection issue discussed below.
 # paramiko has a LGPL license that is included with the repository. ipcalc has a BSD LICENSE mentioned on top of the ipcalc.py file.
 # OS detection doesn't work correctly for CentOS 5.x, These show as redhat 5.x. Set GET_OS_DETAILS to False for CentOS 5.x based systems.
-# LINES 30-47 to match your environment and requirements. If used in conjuction with other auto-discovery methods, you can configure which info to ignore
+# LINES 32-51 to match your environment and requirements. If used in conjuction with other auto-discovery methods, you can configure which info to ignore
 # Network slash notations added in v1.1.0
 #########################################################################################################################################################
 

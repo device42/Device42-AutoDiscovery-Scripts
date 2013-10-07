@@ -9,15 +9,17 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 #########################################################################################################################################################
-# v1.0.0 of python script that uses paramiko to run remote commands using ssh and
+# v1.1.0 of python script that uses paramiko to run remote commands using ssh and
 # gets system info on *nix based systems, parses it and uploads to device42 appliance using APIs
 # tested on Redhat, Fedora and Ubuntu installations. Cent OS 5.x OS detection issue discussed below.
-# paramiko has a LGPL license that is included with the repository.
+# paramiko has a LGPL license that is included with the repository. ipcalc has a BSD LICENSE mentioned on top of the ipcalc.py file.
 # OS detection doesn't work correctly for CentOS 5.x, These show as redhat 5.x. Set GET_OS_DETAILS to False for CentOS 5.x based systems.
 # LINES 30-47 to match your environment and requirements. If used in conjuction with other auto-discovery methods, you can configure which info to ignore
+# Network slash notations added in v1.1.0
 #########################################################################################################################################################
 
 
+import sys
 import paramiko
 import math
 import urllib2, urllib
@@ -30,7 +32,9 @@ ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 D42_API_URL = 'https://D42_IP_or_FQDN'           #make sure to NOT to end in /
 D42_USERNAME = 'D42USER'
 D42_PASSWORD = 'D42PASS'
-IP_RANGE = ['192.168.11.10', '192.168.11.202']  #Start and End IP. There is no validation in the script. Please make sure these are in same subnet.
+USE_IP_RANGE = True
+IP_RANGE = ['192.168.11.10', '192.168.11.202']  #Start and End IP. There is no validation in the script. Please make sure these are in same subnet. Valid if USE_IP_RANGE = True
+NETWORKS = ['10.10.0.0/23', '10.11.8.0/23',]   #End with , if a single network. always use / notation for the network. Only valid if USE_IP_RANGE = False
 LINUX_USER = 'USER'
 LINUX_PASSWORD = 'PASS'            #Change USE_KEY_FILE to False if using password. password for linux servers. not required if using key file.
 USE_KEY_FILE = False                #change this to true, if not using password.
@@ -103,13 +107,13 @@ def post(params, what):
 
 def grab_and_post_inventory_data(machine_name):
     try:
-        if not USE_KEY_FILE: ssh.connect(machine_name, port=PORT, username=LINUX_USER, password=LINUX_PASSWORD, timeout=TIMEOUT)
-        else: ssh.connect(machine_name, port=PORT, username=LINUX_USER, key_filename=KEY_FILE, timeout=TIMEOUT)
+        if not USE_KEY_FILE: ssh.connect(str(machine_name), port=PORT, username=LINUX_USER, password=LINUX_PASSWORD, timeout=TIMEOUT)
+        else: ssh.connect(str(machine_name), port=PORT, username=LINUX_USER, key_filename=KEY_FILE, timeout=TIMEOUT)
     except paramiko.AuthenticationException:
-        print machine_name + ': authentication failed'
+        print str(machine_name) + ': authentication failed'
         return None
     except Exception as err:
-        print machine_name + ': ' + str(err)
+        print str(machine_name) + ': ' + str(err)
         return  None
     devargs = {}
 
@@ -240,6 +244,16 @@ def grab_and_post_inventory_data(machine_name):
     ssh.close()
     return devargs
 
-iplist = enumerate_ips()
-for ip in iplist:
-    grab_and_post_inventory_data(ip)
+if USE_IP_RANGE:
+    iplist = enumerate_ips()
+    for ip in iplist:
+        grab_and_post_inventory_data(ip)
+else:
+    try: import ipcalc
+    except:
+        print 'Unable to import ipcalc. Please drop ipcalc.py on the same path or make sure it is installed and in the system path. https://github.com/tehmaze/ipcalc/tree/master/src'
+        sys.exit(0)
+    for network in NETWORKS:
+        for ip in ipcalc.Network(network):
+            grab_and_post_inventory_data(ip)
+

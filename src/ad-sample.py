@@ -10,7 +10,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ##############################################
 # queries active directory for each computer
-# adds device and ip to device42 appliances
+# adds device and ip to device42 appliance via REST APIs
 #
 #   Requires:
 #       powershell

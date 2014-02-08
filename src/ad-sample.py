@@ -9,7 +9,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 ##############################################
-# queries active directorty for each computer
+# queries active directory for each computer
 # adds device and ip to device42 appliances
 #
 #   Requires:
@@ -153,13 +153,13 @@ def main():
     banner="""\
 
 +----------------------------------------------------+
-| Admin rights are required to enumerate information |
+| Domain Admin rights are required to enumerate information |
 +----------------------------------------------------+
     """
     print banner
 
     menu="""\
-Which computer resources would you like in the report?
+Which computer resources would you like to run auto-discovery on?
     [1] All Domain Computers
     [2] All Domain Servers
     [3] Computer names from a File

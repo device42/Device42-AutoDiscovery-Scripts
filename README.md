@@ -11,11 +11,12 @@ This project contains sample scripts to show how to use Device42 developer APIs 
    * **sample-script-facter-facts-to-d42.py** : Runs on puppet master and uploads nodes info from facter fact files to device42 appliance.
    * **d42_api_solaris_sample_script.py**: Runs on an individual solaris system and uploads info to device42 appliance.
    * **linux_auto_dics_multi.py**: Run on a *nix system with paramiko to get inventory using ssh from an IP range and upload to d42 appliance.
+   * **winservice.py**  : Can run against Active directory computers, servers or a given list and upload discovered services as application components to device42 appliance.
 
 ### Requirement
 -----------------------------
    * python 2.7.x
-   * ad-sample and api-sample scripts require Poweshell 1.0 or Powershell 2.0 and IronPython 2.7.x.
+   * ad-sample, api-sample and winservice scripts require Poweshell 1.0 or Powershell 2.0, .Net 4 and IronPython 2.7.x.
    * linux_auto_disc_multi requires installation of paramiko library. Install: sudo pip install paramiko (or Ubuntu/Debian: sudo apt-get install python-paramiko)
 
 ### Usage

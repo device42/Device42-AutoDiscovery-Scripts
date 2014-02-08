@@ -47,7 +47,7 @@ D42_PASSWORD='put-your-password-here'
 PATH_NAME_STRINGS_TO_IGNORE = ['system32', 'vmware', ]     #Any service running under a path containing this string will be ignored.
 ADD_SERVICE_ACCOUNT_AS_DEPENDENCY = True                   #Change to False if you don't want to record dependency on service account
 SERVICE_ACCOUNT_PREFIX = 'ServiceAccount_'                 #Prefix to add to service accounts to see the impact - change to '' if no prefix is required
-IGNORE_ALL_SERVICES_RUNNING_AS_LOCALSYSTEM = True         #If you just want to get services running under service accounts - set this to True
+IGNORE_ALL_SERVICES_RUNNING_AS_LOCALSYSTEM = False         #If you just want to get services running under service accounts - set this to True
 
 DRY_RUN = False                                            #Set to True to NOT post to D42 and just print the parameters that will be sent
 DEBUG = False

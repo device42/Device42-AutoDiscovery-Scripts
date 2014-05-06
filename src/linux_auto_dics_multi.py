@@ -20,6 +20,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 import sys
+import re
 import paramiko
 import math
 import urllib2, urllib
@@ -81,6 +82,7 @@ def enumerate_ips():
 def post(params, what):
     if what == 'device': THE_URL = D42_API_URL + '/api/device/'
     elif what == 'ip': THE_URL = D42_API_URL + '/api/ip/'
+    elif what == 'mac': THE_URL = D42_API_URL + '/api/1.0/macs/'
     data= urllib.urlencode(params)
     headers = {
             'Authorization' : 'Basic '+ b64encode(D42_USERNAME + ':' + D42_PASSWORD),
@@ -209,6 +211,26 @@ def grab_and_post_inventory_data(machine_name):
         stdin, stdout, stderr = ssh.exec_command("/sbin/ifconfig -a") #TODO add just macs without IPs
         if not stderr.readlines():
             ipinfo = stdout.readlines()
+
+            # ======= MAC  only=========#
+            for rec in ipinfo:
+                if 'hwaddr' in rec.lower():
+                    mac = re.search(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', rec, re.I).group()
+                    print 'MAC: %s' % mac
+                    print rec.split("\n")[0].split()[0]
+                    mac_address = {
+                    'macaddress' : mac, 
+                    'port_name': rec.split("\n")[0].split()[0],
+                    'device' : device_name_in_d42,
+                    'override': 'smart'
+                     }
+                    ADDED, msg_mac = post(mac_address, 'mac')
+                    if ADDED:
+                        print mac + ': ' + str(msg_mac)
+                    else:
+                        print mac + ': failed with message = ' + str(msg_mac)
+                    print '\n\n'
+            # =======  / MAC only =========#
 
             for i, item in enumerate(ipinfo):
                 if 'Ethernet' in item:

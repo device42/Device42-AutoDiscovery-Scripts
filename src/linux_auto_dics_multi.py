@@ -273,7 +273,11 @@ if USE_IP_RANGE:
 else:
     try: import ipcalc
     except:
-        print 'Unable to import ipcalc. Please drop ipcalc.py on the same path or make sure it is installed and in the system path. https://github.com/tehmaze/ipcalc/tree/master/src'
+        print 'Unable to import ipcalc.'
+        print 'Please run: pip install git+git://github.com/tehmaze/ipcalc.git@master'
+        print 'or drop ipcalc.py in the same path as this script'
+        print 'or make sure it is installed and in the system path.'
+        print 'https://github.com/tehmaze/ipcalc/blob/master/ipcalc.py'
         sys.exit(0)
     for network in NETWORKS:
         for ip in ipcalc.Network(network):

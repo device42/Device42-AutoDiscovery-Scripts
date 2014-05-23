@@ -130,40 +130,44 @@ def grab_and_post_inventory_data(machine_name):
     if device_name != '':
         stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-uuid")
         if not stderr.readlines():
-            uuid = stdout.readlines()[0].rstrip()
-            if uuid and uuid != '': devargs.update({'uuid': uuid})
+            if len(stdout.readlines()) > 0:
+                uuid = stdout.readlines()[0].rstrip()
+                if uuid and uuid != '': devargs.update({'uuid': uuid})
 
         if GET_SERIAL_INFO:
             stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-serial-number")
             if not stderr.readlines():
-                serial_no = stdout.readlines()[0].rstrip()
-                if serial_no and serial_no != '': devargs.update({'serial_no': serial_no})
+                if len(stdout.readlines()) > 0:
+                    serial_no = stdout.readlines()[0].rstrip()
+                    if serial_no and serial_no != '': devargs.update({'serial_no': serial_no})
 
         stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-manufacturer")
         if not stderr.readlines():
-            manufacturer = stdout.readlines()[0].rstrip()
-            if manufacturer and manufacturer != '':
-                for mftr in ['VMware, Inc.', 'Bochs', 'KVM', 'QEMU', 'Microsoft Corporation', '    Xen']:
-                    if mftr == to_ascii(manufacturer).replace("# SMBIOS implementations newer     than version 2.6 are not\n# fully supported by this version of     dmidecode.\n", "").strip():
-                        manufacturer = 'virtual'
-                        devargs.update({ 'type' : 'virtual', })
-                        break
-                if manufacturer != 'virtual' and GET_HARDWARE_INFO:
-                    devargs.update({'manufacturer': to_ascii(manufacturer).replace("# SMBIOS     implementations newer than version 2.6 are not\n# fully supported by     this version of dmidecode.\n", "").strip()})
-                    stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-product-    name")
-                    if not stderr.readlines():
-                        hardware = stdout.readlines()[0].rstrip()
-                        if hardware and hardware != '': devargs.update({'hardware': hardware})
+            if len(stdout.readlines()) > 0:
+                manufacturer = stdout.readlines()[0].rstrip()
+                if manufacturer and manufacturer != '':
+                    for mftr in ['VMware, Inc.', 'Bochs', 'KVM', 'QEMU', 'Microsoft Corporation', '    Xen']:
+                        if mftr == to_ascii(manufacturer).replace("# SMBIOS implementations newer     than version 2.6 are not\n# fully supported by this version of     dmidecode.\n", "").strip():
+                            manufacturer = 'virtual'
+                            devargs.update({ 'type' : 'virtual', })
+                            break
+                    if manufacturer != 'virtual' and GET_HARDWARE_INFO:
+                        devargs.update({'manufacturer': to_ascii(manufacturer).replace("# SMBIOS     implementations newer than version 2.6 are not\n# fully supported by     this version of dmidecode.\n", "").strip()})
+                        stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-product-    name")
+                        if not stderr.readlines():
+                            hardware = stdout.readlines()[0].rstrip()
+                            if hardware and hardware != '': devargs.update({'hardware': hardware})
 
         if GET_OS_DETAILS:
             stdin, stdout, stderr = ssh.exec_command("/usr/bin/python -m platform")
             if not stderr.readlines():
-                release = stdout.readlines()[0].rstrip()
-                if release and release != '':
+                if len(stdout.readlines()) > 0:
+                    release = stdout.readlines()[0].rstrip()
+                    if release and release != '':
                         devargs.update({
-                        'os': release.split('-with-')[1].split('-')[0],
-                        'osver': release.split('-with-')[1].split('-')[1],
-                        })
+                            'os': release.split('-with-')[1].split('-')[0],
+                            'osver': release.split('-with-')[1].split('-')[1],
+                            })
 
         if GET_MEMORY_INFO:
             stdin, stdout, stderr = ssh.exec_command("grep MemTotal /proc/meminfo")
@@ -184,26 +188,28 @@ def grab_and_post_inventory_data(machine_name):
 
             stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s processor-frequency")
             if not stderr.readlines():
-                cpuspeedinfo = stdout.readlines()
-                for item in cpuspeedinfo:
-                    if 'MHz' in item:
-                        cpuspeed = item.split(' ')[0]
-                        break
-                if cpuspeed != '': devargs.update({'cpupower': cpuspeed,})
+                if len(stdout.readlines()) > 0:
+                    cpuspeedinfo = stdout.readlines()
+                    for item in cpuspeedinfo:
+                        if 'MHz' in item:
+                            cpuspeed = item.split(' ')[0]
+                            break
+                    if cpuspeed != '': devargs.update({'cpupower': cpuspeed,})
 
             stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -t processor")
             if not stderr.readlines():
-                coreinfo = stdout.readlines()
-                for item in coreinfo:
-                    if 'Core Count' in item:
-                        corecount = int(item.replace('Core Count: ', '').strip())
-                        break
-                if corecount == 0:
-                    corecount = 1
-                if cpucount > 0:
-                    cpucount /= corecount
-                    devargs.update({'cpucount': cpucount})
-                    devargs.update({'cpucore': corecount})
+                if len(stdout.readlines()) > 0:
+                    coreinfo = stdout.readlines()
+                    for item in coreinfo:
+                        if 'Core Count' in item:
+                            corecount = int(item.replace('Core Count: ', '').strip())
+                            break
+                    if corecount == 0:
+                        corecount = 1
+                    if cpucount > 0:
+                        cpucount /= corecount
+                        devargs.update({'cpucount': cpucount})
+                        devargs.update({'cpucore': corecount})
 
         ADDED, msg = post(devargs, 'device')
 
@@ -221,7 +227,7 @@ def grab_and_post_inventory_data(machine_name):
                         print 'MAC: %s' % mac
                         print rec.split("\n")[0].split()[0]
                         mac_address = {
-                        'macaddress' : mac, 
+                        'macaddress' : mac,
                         'port_name': rec.split("\n")[0].split()[0],
                         'device' : device_name_in_d42,
                         'override': 'smart'

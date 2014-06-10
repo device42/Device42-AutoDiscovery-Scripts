@@ -10,13 +10,18 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 
 #########################################################################################################################################################
-# v1.1.0 of python script that uses paramiko to run remote commands using ssh and
+# v1.2.0 of python script that uses paramiko to run remote commands using ssh and
 # gets system info on *nix based systems, parses it and uploads to device42 appliance using APIs
 # tested on Redhat, Fedora and Ubuntu installations. Cent OS 5.x OS detection issue discussed below.
 # paramiko has a LGPL license that is included with the repository. ipcalc has a BSD LICENSE mentioned on top of the ipcalc.py file.
 # OS detection doesn't work correctly for CentOS 5.x, These show as redhat 5.x. Set GET_OS_DETAILS to False for CentOS 5.x based systems.
-# LINES 32-51 to match your environment and requirements. If used in conjuction with other auto-discovery methods, you can configure which info to ignore
+# LINES 39-58 to match your environment and requirements. If used in conjuction with other auto-discovery methods, you can configure which info to ignore
 # Network slash notations added in v1.1.0
+# Note:
+# By default, root has permissions to run dmidecode. If you are running auto-discover as a non-root user, you would need following in your /etc/sudoers file.
+#     %your-group-here ALL = (ALL) NOPASSWD:/usr/sbin/dmidecode
+# If this permission is missing, auto-discovery client would not be able to find hardware, manufacturer, serial #, and so on.
+# You might also have to comment out Default Requiretty in /etc/sudoers file.
 #########################################################################################################################################################
 
 
@@ -31,18 +36,18 @@ import simplejson as json
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-D42_API_URL = 'https://D42_IP_or_FQDN'           #make sure to NOT to end in /
+D42_API_URL = 'https://D42_IP_or_FQDN' #make sure to NOT to end in /
 D42_USERNAME = 'D42USER'
 D42_PASSWORD = 'D42PASS'
 USE_IP_RANGE = True
-IP_RANGE = ['192.168.11.10', '192.168.11.202']  #Start and End IP. There is no validation in the script. Please make sure these are in same subnet. Valid if USE_IP_RANGE = True
-NETWORKS = ['10.10.0.0/23', '10.11.8.0/23',]   #End with , if a single network. always use / notation for the network. Only valid if USE_IP_RANGE = False
+IP_RANGE = ['192.168.11.10', '192.168.11.202'] #Start and End IP. There is no validation in the script. Please make sure these are in same subnet. Valid if USE_IP_RANGE = True
+NETWORKS = ['10.10.0.0/23', '10.11.8.0/23',] #End with , if a single network. always use / notation for the network. Only valid if USE_IP_RANGE = False
 LINUX_USER = 'USER'
-LINUX_PASSWORD = 'PASS'            #Change USE_KEY_FILE to False if using password. password for linux servers. not required if using key file.
-USE_KEY_FILE = False                #change this to true, if not using password.
+LINUX_PASSWORD = 'PASS' #Change USE_KEY_FILE to False if using password. password for linux servers. not required if using key file.
+USE_KEY_FILE = False #change this to true, if not using password.
 KEY_FILE = '/path/.ssh/id_rsa.pub' #key file name (with full path if not in same directory as the script)
-PORT = 22                          #ssh port to use
-TIMEOUT = 5                        #timeout in seconds for the ssh session
+PORT = 22 #ssh port to use
+TIMEOUT = 5 #timeout in seconds for the ssh session
 GET_SERIAL_INFO = True
 GET_HARDWARE_INFO = True
 GET_OS_DETAILS = True
@@ -51,6 +56,8 @@ GET_MEMORY_INFO = True
 ignoreDomain = True
 uploadipv6 = True
 DEBUG = False
+
+
 
 def to_ascii(s):
     try: return s.encode('ascii','ignore')
@@ -119,32 +126,55 @@ def grab_and_post_inventory_data(machine_name):
         print str(machine_name) + ': ' + str(err)
         return  None
     devargs = {}
-
+    
+    print '[+] Connecting to: %s' % machine_name
     stdin, stdout, stderr = ssh.exec_command("/bin/hostname")
-    if not stderr.readlines():
-        if ignoreDomain: device_name = to_ascii(stdout.readlines()[0].rstrip()).split('.')[0]
-        else: device_name = to_ascii(stdout.readlines()[0].rstrip())
+    data_err = stderr.readlines()
+    data_out = stdout.readlines()
+    device_name = None
+    if not data_err:
+        if ignoreDomain: device_name = to_ascii(data_out[0].rstrip()).split('.')[0]
+        else: device_name = to_ascii(data_out[0].rstrip())
         if device_name != '':
             devargs.update({'name': device_name})
+    else:
+        if DEBUG:
+            print data_err
+    
+    if not device_name:
+        return None
 
     if device_name != '':
         stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-uuid")
-        if not stderr.readlines():
-            if len(stdout.readlines()) > 0:
-                uuid = stdout.readlines()[0].rstrip()
+        data_err = stderr.readlines()
+        data_out = stdout.readlines()
+        if not data_err:
+            if len(data_out) > 0:
+                uuid = data_out[0].rstrip()
                 if uuid and uuid != '': devargs.update({'uuid': uuid})
+        else:
+            if DEBUG:
+                print data_err
+
 
         if GET_SERIAL_INFO:
             stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-serial-number")
-            if not stderr.readlines():
-                if len(stdout.readlines()) > 0:
-                    serial_no = stdout.readlines()[0].rstrip()
+            data_err = stderr.readlines()
+            data_out = stdout.readlines()
+            if not data_err:
+                if len(data_out) > 0:
+                    serial_no = data_out[0].rstrip()
                     if serial_no and serial_no != '': devargs.update({'serial_no': serial_no})
+            else:
+                if DEBUG:
+                    print data_err
 
         stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-manufacturer")
-        if not stderr.readlines():
-            if len(stdout.readlines()) > 0:
-                manufacturer = stdout.readlines()[0].rstrip()
+        data_err = stderr.readlines()
+        data_out = stdout.readlines()
+        if not data_err:
+            if len(data_out) > 0:
+                manufacturer = data_out[0].rstrip()
                 if manufacturer and manufacturer != '':
                     for mftr in ['VMware, Inc.', 'Bochs', 'KVM', 'QEMU', 'Microsoft Corporation', '    Xen']:
                         if mftr == to_ascii(manufacturer).replace("# SMBIOS implementations newer     than version 2.6 are not\n# fully supported by this version of     dmidecode.\n", "").strip():
@@ -154,28 +184,48 @@ def grab_and_post_inventory_data(machine_name):
                     if manufacturer != 'virtual' and GET_HARDWARE_INFO:
                         devargs.update({'manufacturer': to_ascii(manufacturer).replace("# SMBIOS     implementations newer than version 2.6 are not\n# fully supported by     this version of dmidecode.\n", "").strip()})
                         stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-product-    name")
-                        if not stderr.readlines():
-                            hardware = stdout.readlines()[0].rstrip()
+                        data_err = stderr.readlines()
+                        data_out = stdout.readlines()
+                        if not data_err:
+                            hardware = data_out[0].rstrip()
                             if hardware and hardware != '': devargs.update({'hardware': hardware})
+                        else:
+                            if DEBUG:
+                                print data_err
+        else:
+            if DEBUG:
+                print data_err
+
 
         if GET_OS_DETAILS:
             stdin, stdout, stderr = ssh.exec_command("/usr/bin/python -m platform")
-            if not stderr.readlines():
-                if len(stdout.readlines()) > 0:
-                    release = stdout.readlines()[0].rstrip()
+            data_err = stderr.readlines()
+            data_out = stdout.readlines()
+            if not data_err:
+                if len(data_out) > 0:
+                    release = data_out[0].rstrip()
                     if release and release != '':
                         devargs.update({
                             'os': release.split('-with-')[1].split('-')[0],
                             'osver': release.split('-with-')[1].split('-')[1],
                             })
+            else:
+                if DEBUG:
+                    print data_err
+
 
         if GET_MEMORY_INFO:
             stdin, stdout, stderr = ssh.exec_command("grep MemTotal /proc/meminfo")
-            if not stderr.readlines():
-                memory_raw = stdout.readlines()[0].replace(' ', '').replace('MemTotal:','').replace('kB','')
+            data_err = stderr.readlines()
+            data_out = stdout.readlines()
+            if not data_err:
+                memory_raw = data_out[0].replace(' ', '').replace('MemTotal:','').replace('kB','')
                 if memory_raw and memory_raw != '':
                     memory = closest_memory_assumption(int(memory_raw)/1024)
                     devargs.update({'memory': memory})
+            else:
+                if DEBUG:
+                    print data_err
 
         if GET_CPU_INFO:
             cpucount = 0
@@ -183,23 +233,35 @@ def grab_and_post_inventory_data(machine_name):
             corecount = 0
 
             stdin, stdout, stderr = ssh.exec_command("cat /proc/cpuinfo | grep processor | wc -l    ")
-            if not stderr.readlines():
-                cpucount = int(stdout.readlines()[0].strip())
-
+            data_err = stderr.readlines()
+            data_out = stdout.readlines()
+            if not data_err:
+                cpucount = int(data_out[0].strip())
+            else:
+                if DEBUG:
+                    print data_err
+                    
             stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s processor-frequency")
-            if not stderr.readlines():
-                if len(stdout.readlines()) > 0:
-                    cpuspeedinfo = stdout.readlines()
+            data_err = stderr.readlines()
+            data_out = stdout.readlines()
+            if not data_err:
+                if len(data_out) > 0:
+                    cpuspeedinfo = data_out
                     for item in cpuspeedinfo:
                         if 'MHz' in item:
                             cpuspeed = item.split(' ')[0]
                             break
                     if cpuspeed != '': devargs.update({'cpupower': cpuspeed,})
+            else:
+                if DEBUG:
+                    print data_err
 
             stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -t processor")
-            if not stderr.readlines():
-                if len(stdout.readlines()) > 0:
-                    coreinfo = stdout.readlines()
+            data_err = stderr.readlines()
+            data_out = stdout.readlines()
+            if not data_err:
+                if len(data_out) > 0:
+                    coreinfo = data_out()
                     for item in coreinfo:
                         if 'Core Count' in item:
                             corecount = int(item.replace('Core Count: ', '').strip())
@@ -210,6 +272,9 @@ def grab_and_post_inventory_data(machine_name):
                         cpucount /= corecount
                         devargs.update({'cpucount': cpucount})
                         devargs.update({'cpucore': corecount})
+            else:
+                if DEBUG:
+                    print data_err
 
         ADDED, msg = post(devargs, 'device')
 
@@ -217,7 +282,9 @@ def grab_and_post_inventory_data(machine_name):
             print str(machine_name) + ': ' + msg['msg'][0]
             device_name_in_d42 = msg['msg'][2]
             stdin, stdout, stderr = ssh.exec_command("/sbin/ifconfig -a") #TODO add just macs     without IPs
-            if not stderr.readlines():
+            data_err = stderr.readlines()
+            data_out = stdout.readlines()
+            if not data_err:
                 ipinfo = stdout.readlines()
 
                 # ======= MAC  only=========#
@@ -269,6 +336,9 @@ def grab_and_post_inventory_data(machine_name):
                                 print ipv6_address + ' : ' + str(msg_ip)
                             else:
                                 print ipv6_address + ': failed with message = ' + str(msg_ip)
+            else:
+                if DEBUG:
+                    print data_err
         else:
             print str(machine_name) + ': failed with message: ' + str(msg)
     else:

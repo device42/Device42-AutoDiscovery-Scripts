@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
@@ -123,146 +124,155 @@ def grab_and_post_inventory_data(machine_name):
     if not stderr.readlines():
         if ignoreDomain: device_name = to_ascii(stdout.readlines()[0].rstrip()).split('.')[0]
         else: device_name = to_ascii(stdout.readlines()[0].rstrip())
-        devargs.update({'name': device_name})
+        if device_name != '':
+            devargs.update({'name': device_name})
 
-    stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-uuid")
-    if not stderr.readlines():
-        uuid = stdout.readlines()[0].rstrip()
-        if uuid and uuid != '': devargs.update({'uuid': uuid})
-
-    if GET_SERIAL_INFO:
-        stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-serial-number")
+    if device_name != '':
+        stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-uuid")
         if not stderr.readlines():
-            serial_no = stdout.readlines()[0].rstrip()
-            if serial_no and serial_no != '': devargs.update({'serial_no': serial_no})
+            if len(stdout.readlines()) > 0:
+                uuid = stdout.readlines()[0].rstrip()
+                if uuid and uuid != '': devargs.update({'uuid': uuid})
 
-    stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-manufacturer")
-    if not stderr.readlines():
-        manufacturer = stdout.readlines()[0].rstrip()
-        if manufacturer and manufacturer != '':
-            for mftr in ['VMware, Inc.', 'Bochs', 'KVM', 'QEMU', 'Microsoft Corporation', 'Xen']:
-                if mftr == to_ascii(manufacturer).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").strip():
-                    manufacturer = 'virtual'
-                    devargs.update({ 'type' : 'virtual', })
-                    break
-            if manufacturer != 'virtual' and GET_HARDWARE_INFO:
-                devargs.update({'manufacturer': to_ascii(manufacturer).replace("# SMBIOS implementations newer than version 2.6 are not\n# fully supported by this version of dmidecode.\n", "").strip()})
-                stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-product-name")
-                if not stderr.readlines():
-                    hardware = stdout.readlines()[0].rstrip()
-                    if hardware and hardware != '': devargs.update({'hardware': hardware})
+        if GET_SERIAL_INFO:
+            stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-serial-number")
+            if not stderr.readlines():
+                if len(stdout.readlines()) > 0:
+                    serial_no = stdout.readlines()[0].rstrip()
+                    if serial_no and serial_no != '': devargs.update({'serial_no': serial_no})
 
-    if GET_OS_DETAILS:
-        stdin, stdout, stderr = ssh.exec_command("/usr/bin/python -m platform")
+        stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-manufacturer")
         if not stderr.readlines():
-            release = stdout.readlines()[0].rstrip()
-            if release and release != '':
-                    devargs.update({
-                    'os': release.split('-with-')[1].split('-')[0],
-                    'osver': release.split('-with-')[1].split('-')[1],
-                    })
+            if len(stdout.readlines()) > 0:
+                manufacturer = stdout.readlines()[0].rstrip()
+                if manufacturer and manufacturer != '':
+                    for mftr in ['VMware, Inc.', 'Bochs', 'KVM', 'QEMU', 'Microsoft Corporation', '    Xen']:
+                        if mftr == to_ascii(manufacturer).replace("# SMBIOS implementations newer     than version 2.6 are not\n# fully supported by this version of     dmidecode.\n", "").strip():
+                            manufacturer = 'virtual'
+                            devargs.update({ 'type' : 'virtual', })
+                            break
+                    if manufacturer != 'virtual' and GET_HARDWARE_INFO:
+                        devargs.update({'manufacturer': to_ascii(manufacturer).replace("# SMBIOS     implementations newer than version 2.6 are not\n# fully supported by     this version of dmidecode.\n", "").strip()})
+                        stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-product-    name")
+                        if not stderr.readlines():
+                            hardware = stdout.readlines()[0].rstrip()
+                            if hardware and hardware != '': devargs.update({'hardware': hardware})
 
-    if GET_MEMORY_INFO:
-        stdin, stdout, stderr = ssh.exec_command("grep MemTotal /proc/meminfo")
-        if not stderr.readlines():
-            memory_raw = stdout.readlines()[0].replace(' ', '').replace('MemTotal:','').replace('kB','')
-            if memory_raw and memory_raw != '':
-                memory = closest_memory_assumption(int(memory_raw)/1024)
-                devargs.update({'memory': memory})
+        if GET_OS_DETAILS:
+            stdin, stdout, stderr = ssh.exec_command("/usr/bin/python -m platform")
+            if not stderr.readlines():
+                if len(stdout.readlines()) > 0:
+                    release = stdout.readlines()[0].rstrip()
+                    if release and release != '':
+                        devargs.update({
+                            'os': release.split('-with-')[1].split('-')[0],
+                            'osver': release.split('-with-')[1].split('-')[1],
+                            })
 
-    if GET_CPU_INFO:
-        cpucount = 0
-        cpuspeed = ''
-        corecount = 0
+        if GET_MEMORY_INFO:
+            stdin, stdout, stderr = ssh.exec_command("grep MemTotal /proc/meminfo")
+            if not stderr.readlines():
+                memory_raw = stdout.readlines()[0].replace(' ', '').replace('MemTotal:','').replace('kB','')
+                if memory_raw and memory_raw != '':
+                    memory = closest_memory_assumption(int(memory_raw)/1024)
+                    devargs.update({'memory': memory})
 
-        stdin, stdout, stderr = ssh.exec_command("cat /proc/cpuinfo | grep processor | wc -l")
-        if not stderr.readlines():
-            cpucount = int(stdout.readlines()[0].strip())
+        if GET_CPU_INFO:
+            cpucount = 0
+            cpuspeed = ''
+            corecount = 0
 
+            stdin, stdout, stderr = ssh.exec_command("cat /proc/cpuinfo | grep processor | wc -l    ")
+            if not stderr.readlines():
+                cpucount = int(stdout.readlines()[0].strip())
 
-        stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s processor-frequency")
-        if not stderr.readlines():
-            cpuspeedinfo = stdout.readlines()
-            for item in cpuspeedinfo:
-                if 'MHz' in item:
-                    cpuspeed = item.split(' ')[0]
-                    break
-            if cpuspeed != '': devargs.update({'cpupower': cpuspeed,})
+            stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s processor-frequency")
+            if not stderr.readlines():
+                if len(stdout.readlines()) > 0:
+                    cpuspeedinfo = stdout.readlines()
+                    for item in cpuspeedinfo:
+                        if 'MHz' in item:
+                            cpuspeed = item.split(' ')[0]
+                            break
+                    if cpuspeed != '': devargs.update({'cpupower': cpuspeed,})
 
-        stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -t processor")
-        if not stderr.readlines():
-            coreinfo = stdout.readlines()
-            for item in coreinfo:
-                if 'Core Count' in item:
-                    corecount = int(item.replace('Core Count: ', '').strip())
-                    break
-            if corecount == 0:
-                corecount = 1
-            if cpucount > 0:
-                cpucount /= corecount
-                devargs.update({'cpucount': cpucount})
-                devargs.update({'cpucore': corecount})
+            stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -t processor")
+            if not stderr.readlines():
+                if len(stdout.readlines()) > 0:
+                    coreinfo = stdout.readlines()
+                    for item in coreinfo:
+                        if 'Core Count' in item:
+                            corecount = int(item.replace('Core Count: ', '').strip())
+                            break
+                    if corecount == 0:
+                        corecount = 1
+                    if cpucount > 0:
+                        cpucount /= corecount
+                        devargs.update({'cpucount': cpucount})
+                        devargs.update({'cpucore': corecount})
 
-    ADDED, msg = post(devargs, 'device')
+        ADDED, msg = post(devargs, 'device')
 
-    if ADDED:
-        print machine_name + ': ' + msg['msg'][0]
-        device_name_in_d42 = msg['msg'][2]
-        stdin, stdout, stderr = ssh.exec_command("/sbin/ifconfig -a") #TODO add just macs without IPs
-        if not stderr.readlines():
-            ipinfo = stdout.readlines()
+        if ADDED:
+            print str(machine_name) + ': ' + msg['msg'][0]
+            device_name_in_d42 = msg['msg'][2]
+            stdin, stdout, stderr = ssh.exec_command("/sbin/ifconfig -a") #TODO add just macs     without IPs
+            if not stderr.readlines():
+                ipinfo = stdout.readlines()
 
-            # ======= MAC  only=========#
-            for rec in ipinfo:
-                if 'hwaddr' in rec.lower():
-                    mac = re.search(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', rec, re.I).group()
-                    print 'MAC: %s' % mac
-                    print rec.split("\n")[0].split()[0]
-                    mac_address = {
-                    'macaddress' : mac, 
-                    'port_name': rec.split("\n")[0].split()[0],
-                    'device' : device_name_in_d42,
-                    'override': 'smart'
-                     }
-                    ADDED, msg_mac = post(mac_address, 'mac')
-                    if ADDED:
-                        print mac + ': ' + str(msg_mac)
-                    else:
-                        print mac + ': failed with message = ' + str(msg_mac)
-                    print '\n\n'
-            # =======  / MAC only =========#
-
-            for i, item in enumerate(ipinfo):
-                if 'Ethernet' in item:
-                    if 'inet addr' in ipinfo[i+1]:
-                        ipv4_address = ipinfo[i+1].split()[1].replace('addr:', '')
-                        ip = {
-                        'ipaddress': ipv4_address,
-                        'tag': item.split("\n")[0].split()[0],
-                        'macaddress' : item.split("\n")[0].split()[4],
+                # ======= MAC  only=========#
+                for rec in ipinfo:
+                    if 'hwaddr' in rec.lower():
+                        mac = re.search(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', rec, re.I).group()
+                        print 'MAC: %s' % mac
+                        print rec.split("\n")[0].split()[0]
+                        mac_address = {
+                        'macaddress' : mac,
+                        'port_name': rec.split("\n")[0].split()[0],
                         'device' : device_name_in_d42,
+                        'override': 'smart'
                          }
-                        ADDED, msg_ip = post(ip, 'ip')
+                        ADDED, msg_mac = post(mac_address, 'mac')
                         if ADDED:
-                            print ipv4_address + ': ' + str(msg_ip)
+                            print mac + ': ' + str(msg_mac)
                         else:
-                            print ipv4_address + ': failed with message = ' + str(msg_ip)
-                    if uploadipv6 and ('inet6 addr' in ipinfo[i+1] or 'inet6 addr' in ipinfo[i+2]):
-                        if 'inet6 addr' in ipinfo[i+1]: ipv6_address = ipinfo[i+1].split()[2].split('/')[0]
-                        else: ipv6_address = ipinfo[i+2].split()[2].split('/')[0]
-                        ip = {
-                        'ipaddress': ipv6_address,
-                        'tag': item.split("\n")[0].split()[0],
-                        'macaddress' : item.split("\n")[0].split()[4],
-                        'device' : device_name_in_d42,
-                         }
-                        ADDED, msg_ip = post(ip, 'ip')
-                        if ADDED:
-                            print ipv6_address + ' : ' + str(msg_ip)
-                        else:
-                            print ipv6_address + ': failed with message = ' + str(msg_ip)
+                            print mac + ': failed with message = ' + str(msg_mac)
+                        print '\n\n'
+                # =======  / MAC only =========#
+
+                for i, item in enumerate(ipinfo):
+                    if 'Ethernet' in item:
+                        if 'inet addr' in ipinfo[i+1]:
+                            ipv4_address = ipinfo[i+1].split()[1].replace('addr:', '')
+                            ip = {
+                            'ipaddress': ipv4_address,
+                            'tag': item.split("\n")[0].split()[0],
+                            'macaddress' : item.split("\n")[0].split()[4],
+                            'device' : device_name_in_d42,
+                             }
+                            ADDED, msg_ip = post(ip, 'ip')
+                            if ADDED:
+                                print ipv4_address + ': ' + str(msg_ip)
+                            else:
+                                print ipv4_address + ': failed with message = ' + str(msg_ip)
+                        if uploadipv6 and ('inet6 addr' in ipinfo[i+1] or 'inet6 addr' in ipinfo    [i+2]):
+                            if 'inet6 addr' in ipinfo[i+1]: ipv6_address = ipinfo[i+1].split()[2    ].split('/')[0]
+                            else: ipv6_address = ipinfo[i+2].split()[2].split('/')[0]
+                            ip = {
+                            'ipaddress': ipv6_address,
+                            'tag': item.split("\n")[0].split()[0],
+                            'macaddress' : item.split("\n")[0].split()[4],
+                            'device' : device_name_in_d42,
+                             }
+                            ADDED, msg_ip = post(ip, 'ip')
+                            if ADDED:
+                                print ipv6_address + ' : ' + str(msg_ip)
+                            else:
+                                print ipv6_address + ': failed with message = ' + str(msg_ip)
+        else:
+            print str(machine_name) + ': failed with message: ' + str(msg)
     else:
-        print machine_name + ': failed with message: ' + str(msg)
+        print str(machine_name) + ': failed with message: ' + "Can't determine hostname (non-unix system?)"
     ssh.close()
     return devargs
 

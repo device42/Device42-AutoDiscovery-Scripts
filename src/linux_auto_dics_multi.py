@@ -261,7 +261,7 @@ def grab_and_post_inventory_data(machine_name):
             data_out = stdout.readlines()
             if not data_err:
                 if len(data_out) > 0:
-                    coreinfo = data_out()
+                    coreinfo = data_out
                     for item in coreinfo:
                         if 'Core Count' in item:
                             corecount = int(item.replace('Core Count: ', '').strip())

@@ -36,14 +36,14 @@ import simplejson as json
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-D42_API_URL = 'https://D42_IP_or_FQDN' #make sure to NOT to end in /
-D42_USERNAME = 'D42USER'
-D42_PASSWORD = 'D42PASS'
+D42_API_URL = 'https://192.168.3.30' #make sure to NOT to end in /
+D42_USERNAME = 'admin'
+D42_PASSWORD = 'adm!nd42'
 USE_IP_RANGE = True
-IP_RANGE = ['192.168.11.10', '192.168.11.202'] #Start and End IP. There is no validation in the script. Please make sure these are in same subnet. Valid if USE_IP_RANGE = True
+IP_RANGE = ['192.168.3.103', '192.168.3.107'] #Start and End IP. There is no validation in the script. Please make sure these are in same subnet. Valid if USE_IP_RANGE = True
 NETWORKS = ['10.10.0.0/23', '10.11.8.0/23',] #End with , if a single network. always use / notation for the network. Only valid if USE_IP_RANGE = False
-LINUX_USER = 'USER'
-LINUX_PASSWORD = 'PASS' #Change USE_KEY_FILE to False if using password. password for linux servers. not required if using key file.
+LINUX_USER = 'root'
+LINUX_PASSWORD = 'P@ssw0rd' #Change USE_KEY_FILE to False if using password. password for linux servers. not required if using key file.
 USE_KEY_FILE = False #change this to true, if not using password.
 KEY_FILE = '/path/.ssh/id_rsa.pub' #key file name (with full path if not in same directory as the script)
 PORT = 22 #ssh port to use
@@ -285,7 +285,8 @@ def grab_and_post_inventory_data(machine_name):
             data_err = stderr.readlines()
             data_out = stdout.readlines()
             if not data_err:
-                ipinfo = stdout.readlines()
+                #ipinfo = stdout.readlines()
+                ipinfo = data_out
 
                 # ======= MAC  only=========#
                 for rec in ipinfo:
@@ -306,15 +307,40 @@ def grab_and_post_inventory_data(machine_name):
                             print mac + ': failed with message = ' + str(msg_mac)
                         print '\n\n'
                 # =======  / MAC only =========#
+                if ipinfo:
+                    ipinfo = ''.join(ipinfo).split('\n\n')
+                    for nic in ipinfo:
+                        if nic not in  ('', '\n'):
+                            splitted = nic.split('\n')
+                            tag = (splitted[0]).split()[0].rstrip(':')
+                            mac = None
+                            ip = None
+                            
+                            for row in splitted:
+                                rowdata= ' '.join(row.lower().split(':')).split()
 
-                for i, item in enumerate(ipinfo):
-                    if 'Ethernet' in item:
-                        if 'inet addr' in ipinfo[i+1]:
-                            ipv4_address = ipinfo[i+1].split()[1].replace('addr:', '')
+                                try:
+                                    if 'hwaddr' in rowdata:
+                                        mac = row[-1]
+                                    if rowdata[0] == 'ether':
+                                        mac = row.split()[1]
+                                    if rowdata[0] == 'inet' and rowdata[1] == 'addr':
+                                        ipv4_address = rowdata[2]
+                                    if rowdata[0] == 'inet' and not rowdata[1] == 'addr':
+                                        ipv4_address = rowdata[1]
+                                    if 'inet6 addr:' in row:
+                                        ipv6_address =row.split()[2].split('/')[0]
+                                    if rowdata[0] == 'inet6' and not rowdata[1] == 'addr':
+                                        ipv6_address = row.split()[1].split('/')[0]
+                                except IndexError:
+                                    pass
+                                
+                            #print tag, mac, ipv4_address, ipv6_address
+                            
                             ip = {
                             'ipaddress': ipv4_address,
-                            'tag': item.split("\n")[0].split()[0],
-                            'macaddress' : item.split("\n")[0].split()[4],
+                            'tag': tag,
+                            'macaddress' : mac,
                             'device' : device_name_in_d42,
                              }
                             ADDED, msg_ip = post(ip, 'ip')
@@ -322,20 +348,20 @@ def grab_and_post_inventory_data(machine_name):
                                 print ipv4_address + ': ' + str(msg_ip)
                             else:
                                 print ipv4_address + ': failed with message = ' + str(msg_ip)
-                        if uploadipv6 and ('inet6 addr' in ipinfo[i+1] or 'inet6 addr' in ipinfo    [i+2]):
-                            if 'inet6 addr' in ipinfo[i+1]: ipv6_address = ipinfo[i+1].split()[2    ].split('/')[0]
-                            else: ipv6_address = ipinfo[i+2].split()[2].split('/')[0]
-                            ip = {
-                            'ipaddress': ipv6_address,
-                            'tag': item.split("\n")[0].split()[0],
-                            'macaddress' : item.split("\n")[0].split()[4],
-                            'device' : device_name_in_d42,
-                             }
-                            ADDED, msg_ip = post(ip, 'ip')
-                            if ADDED:
-                                print ipv6_address + ' : ' + str(msg_ip)
-                            else:
-                                print ipv6_address + ': failed with message = ' + str(msg_ip)
+                                
+                            if uploadipv6:
+                                ip = {
+                                'ipaddress': ipv6_address,
+                                'tag': tag,
+                                'macaddress' : mac,
+                                'device' : device_name_in_d42,
+                                 }
+                                ADDED, msg_ip = post(ip, 'ip')
+                                if ADDED:
+                                    print ipv6_address + ' : ' + str(msg_ip)
+                                else:
+                                    print ipv6_address + ': failed with message = ' + str(msg_ip)
+
             else:
                 if DEBUG:
                     print data_err

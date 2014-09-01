@@ -40,7 +40,7 @@ D42_API_URL = 'https://192.168.3.30' #make sure to NOT to end in /
 D42_USERNAME = 'admin'
 D42_PASSWORD = 'adm!nd42'
 USE_IP_RANGE = True
-IP_RANGE = ['192.168.3.103', '192.168.3.107'] #Start and End IP. There is no validation in the script. Please make sure these are in same subnet. Valid if USE_IP_RANGE = True
+IP_RANGE = ['192.168.3.101', '192.168.3.107'] #Start and End IP. There is no validation in the script. Please make sure these are in same subnet. Valid if USE_IP_RANGE = True
 NETWORKS = ['10.10.0.0/23', '10.11.8.0/23',] #End with , if a single network. always use / notation for the network. Only valid if USE_IP_RANGE = False
 LINUX_USER = 'root'
 LINUX_PASSWORD = 'P@ssw0rd' #Change USE_KEY_FILE to False if using password. password for linux servers. not required if using key file.
@@ -55,7 +55,7 @@ GET_CPU_INFO = True
 GET_MEMORY_INFO = True
 ignoreDomain = True
 uploadipv6 = True
-DEBUG = False
+DEBUG = True
 
 
 
@@ -183,7 +183,7 @@ def grab_and_post_inventory_data(machine_name):
                             break
                     if manufacturer != 'virtual' and GET_HARDWARE_INFO:
                         devargs.update({'manufacturer': to_ascii(manufacturer).replace("# SMBIOS     implementations newer than version 2.6 are not\n# fully supported by     this version of dmidecode.\n", "").strip()})
-                        stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-product-    name")
+                        stdin, stdout, stderr = ssh.exec_command("sudo dmidecode -s system-product-name")
                         data_err = stderr.readlines()
                         data_out = stdout.readlines()
                         if not data_err:
@@ -285,7 +285,6 @@ def grab_and_post_inventory_data(machine_name):
             data_err = stderr.readlines()
             data_out = stdout.readlines()
             if not data_err:
-                #ipinfo = stdout.readlines()
                 ipinfo = data_out
 
                 # ======= MAC  only=========#
@@ -313,12 +312,10 @@ def grab_and_post_inventory_data(machine_name):
                         if nic not in  ('', '\n'):
                             splitted = nic.split('\n')
                             tag = (splitted[0]).split()[0].rstrip(':')
-                            mac = None
-                            ip = None
                             
                             for row in splitted:
                                 rowdata= ' '.join(row.lower().split(':')).split()
-
+                                
                                 try:
                                     if 'hwaddr' in rowdata:
                                         mac = row[-1]
@@ -334,9 +331,8 @@ def grab_and_post_inventory_data(machine_name):
                                         ipv6_address = row.split()[1].split('/')[0]
                                 except IndexError:
                                     pass
-                                
-                            #print tag, mac, ipv4_address, ipv6_address
-                            
+                                    
+                        if not tag == 'lo':
                             ip = {
                             'ipaddress': ipv4_address,
                             'tag': tag,
@@ -348,7 +344,7 @@ def grab_and_post_inventory_data(machine_name):
                                 print ipv4_address + ': ' + str(msg_ip)
                             else:
                                 print ipv4_address + ': failed with message = ' + str(msg_ip)
-                                
+                            
                             if uploadipv6:
                                 ip = {
                                 'ipaddress': ipv6_address,

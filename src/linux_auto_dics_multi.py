@@ -55,7 +55,7 @@ GET_CPU_INFO = True
 GET_MEMORY_INFO = True
 ignoreDomain = True
 uploadipv6 = True
-DEBUG = True
+DEBUG = False
 
 
 
@@ -123,11 +123,11 @@ def grab_and_post_inventory_data(machine_name):
         print str(machine_name) + ': authentication failed'
         return None
     except Exception as err:
-        print str(machine_name) + ': ' + str(err)
+        print '\n[!] ' + str(machine_name) + ': ' + str(err)
         return  None
     devargs = {}
     
-    print '[+] Connecting to: %s' % machine_name
+    print '\n[+] Connecting to: %s' % machine_name
     stdin, stdout, stderr = ssh.exec_command("/bin/hostname")
     data_err = stderr.readlines()
     data_out = stdout.readlines()
@@ -279,7 +279,6 @@ def grab_and_post_inventory_data(machine_name):
         ADDED, msg = post(devargs, 'device')
 
         if ADDED:
-            print str(machine_name) + ': ' + msg['msg'][0]
             device_name_in_d42 = msg['msg'][2]
             stdin, stdout, stderr = ssh.exec_command("/sbin/ifconfig -a") #TODO add just macs     without IPs
             data_err = stderr.readlines()
@@ -291,8 +290,6 @@ def grab_and_post_inventory_data(machine_name):
                 for rec in ipinfo:
                     if 'hwaddr' in rec.lower():
                         mac = re.search(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', rec, re.I).group()
-                        print 'MAC: %s' % mac
-                        print rec.split("\n")[0].split()[0]
                         mac_address = {
                         'macaddress' : mac,
                         'port_name': rec.split("\n")[0].split()[0],
@@ -301,10 +298,10 @@ def grab_and_post_inventory_data(machine_name):
                          }
                         ADDED, msg_mac = post(mac_address, 'mac')
                         if ADDED:
-                            print mac + ': ' + str(msg_mac)
+                            print '\n\t[!] Response: '+mac + ': ' + str(msg_mac).strip()
                         else:
-                            print mac + ': failed with message = ' + str(msg_mac)
-                        print '\n\n'
+                            print '\n\t[!] Response: '+mac + ': failed with message = ' + str(msg_mac).strip()
+                        
                 # =======  / MAC only =========#
                 if ipinfo:
                     ipinfo = ''.join(ipinfo).split('\n\n')
@@ -312,7 +309,7 @@ def grab_and_post_inventory_data(machine_name):
                         if nic not in  ('', '\n'):
                             splitted = nic.split('\n')
                             tag = (splitted[0]).split()[0].rstrip(':')
-                            
+                            ipv4_address = None
                             for row in splitted:
                                 rowdata= ' '.join(row.lower().split(':')).split()
                                 
@@ -331,8 +328,12 @@ def grab_and_post_inventory_data(machine_name):
                                         ipv6_address = row.split()[1].split('/')[0]
                                 except IndexError:
                                     pass
+                                except Exception, e:
+                                    print '\n[!] Exception! Message was: %s ' % str(e)
+                                    print '\tData: %s' % nic
+                                    pass
                                     
-                        if not tag == 'lo':
+                        if not tag == 'lo' and ipv4_address:
                             ip = {
                             'ipaddress': ipv4_address,
                             'tag': tag,
@@ -341,9 +342,9 @@ def grab_and_post_inventory_data(machine_name):
                              }
                             ADDED, msg_ip = post(ip, 'ip')
                             if ADDED:
-                                print ipv4_address + ': ' + str(msg_ip)
+                                print '\n\t[!] Response: '+ ipv4_address + ': ' + str(msg_ip)
                             else:
-                                print ipv4_address + ': failed with message = ' + str(msg_ip)
+                                print '\n\t[!] Response: '+ ipv4_address + ': failed with message = ' + str(msg_ip)
                             
                             if uploadipv6:
                                 ip = {
@@ -354,9 +355,12 @@ def grab_and_post_inventory_data(machine_name):
                                  }
                                 ADDED, msg_ip = post(ip, 'ip')
                                 if ADDED:
-                                    print ipv6_address + ' : ' + str(msg_ip)
+                                    print '\n\t[!] Response: '+ipv6_address + ' : ' + str(msg_ip)
                                 else:
-                                    print ipv6_address + ': failed with message = ' + str(msg_ip)
+                                    print '\n\t[!] Response: '+ipv6_address + ': failed with message = ' + str(msg_ip)
+                        elif not ipv4_address:
+                            if DEBUG:
+                                print '\n[!] Cannot find/parse IP address. Data was:\n\t%s' % nic
 
             else:
                 if DEBUG:

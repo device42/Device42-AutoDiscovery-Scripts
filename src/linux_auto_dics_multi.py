@@ -309,7 +309,10 @@ def grab_and_post_inventory_data(machine_name):
                         if nic not in  ('', '\n'):
                             splitted = nic.split('\n')
                             tag = (splitted[0]).split()[0].rstrip(':')
+                            
                             ipv4_address = None
+                            ipv6_address = None
+                            
                             for row in splitted:
                                 rowdata= ' '.join(row.lower().split(':')).split()
                                 
@@ -346,7 +349,7 @@ def grab_and_post_inventory_data(machine_name):
                             else:
                                 print '\n\t[!] Response: '+ ipv4_address + ': failed with message = ' + str(msg_ip)
                             
-                            if uploadipv6:
+                            if uploadipv6 and ipv6_address:
                                 ip = {
                                 'ipaddress': ipv6_address,
                                 'tag': tag,
@@ -358,9 +361,12 @@ def grab_and_post_inventory_data(machine_name):
                                     print '\n\t[!] Response: '+ipv6_address + ' : ' + str(msg_ip)
                                 else:
                                     print '\n\t[!] Response: '+ipv6_address + ': failed with message = ' + str(msg_ip)
+                            elif not ipv6_address:
+                                if DEBUG:
+                                    print '\n[!] Cannot find/parse IPv6 address. Data was:\n\t%s' % nic
                         elif not ipv4_address:
                             if DEBUG:
-                                print '\n[!] Cannot find/parse IP address. Data was:\n\t%s' % nic
+                                print '\n[!] Cannot find/parse IPv4 address. Data was:\n\t%s' % nic
 
             else:
                 if DEBUG:

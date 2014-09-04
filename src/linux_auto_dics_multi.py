@@ -326,7 +326,7 @@ def grab_and_post_inventory_data(machine_name):
                                 
                                 try:
                                     if 'hwaddr' in rowdata:
-                                        mac = row[-1]
+                                        mac = row.split()[-1]
                                     if rowdata[0] == 'ether':
                                         mac = row.split()[1]
                                     if rowdata[0] == 'inet' and rowdata[1] == 'addr':

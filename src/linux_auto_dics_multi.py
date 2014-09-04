@@ -40,7 +40,7 @@ D42_API_URL = 'https://192.168.3.30' #make sure to NOT to end in /
 D42_USERNAME = 'admin'
 D42_PASSWORD = 'adm!nd42'
 USE_IP_RANGE = True
-IP_RANGE = ['192.168.3.101', '192.168.3.107'] #Start and End IP. There is no validation in the script. Please make sure these are in same subnet. Valid if USE_IP_RANGE = True
+IP_RANGE = ['192.168.3.103', '192.168.3.107'] #Start and End IP. There is no validation in the script. Please make sure these are in same subnet. Valid if USE_IP_RANGE = True
 NETWORKS = ['10.10.0.0/23', '10.11.8.0/23',] #End with , if a single network. always use / notation for the network. Only valid if USE_IP_RANGE = False
 LINUX_USER = 'root'
 LINUX_PASSWORD = 'P@ssw0rd' #Change USE_KEY_FILE to False if using password. password for linux servers. not required if using key file.
@@ -285,27 +285,35 @@ def grab_and_post_inventory_data(machine_name):
             data_out = stdout.readlines()
             if not data_err:
                 ipinfo = data_out
-
+                
                 # ======= MAC  only=========#
-                for rec in ipinfo:
-                    if 'hwaddr' in rec.lower():
-                        mac = re.search(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', rec, re.I).group()
-                        mac_address = {
-                        'macaddress' : mac,
-                        'port_name': rec.split("\n")[0].split()[0],
-                        'device' : device_name_in_d42,
-                        'override': 'smart'
-                         }
-                        ADDED, msg_mac = post(mac_address, 'mac')
-                        if ADDED:
-                            print '\n\t[!] Response: '+mac + ': ' + str(msg_mac).strip()
-                        else:
-                            print '\n\t[!] Response: '+mac + ': failed with message = ' + str(msg_mac).strip()
-                        
-                # =======  / MAC only =========#
                 if ipinfo:
-                    ipinfo = ''.join(ipinfo).split('\n\n')
-                    for nic in ipinfo:
+                    ipinfo_mac = ''.join(ipinfo).split('\n\n')
+                    for nic in ipinfo_mac:
+                        if nic not in  ('', '\n'):
+                            splitted = nic.split('\n')
+                            tag = (splitted[0]).split()[0].rstrip(':')
+                            for row in splitted:
+                                if 'ether' in row.lower().split() or 'hwaddr' in row.lower().split():
+                                    mac = re.search(r'([0-9A-F]{2}[:-]){5}([0-9A-F]{2})', row, re.I).group()
+                                    mac_address = {
+                                    'macaddress' : mac,
+                                    'port_name': tag,
+                                    'device' : device_name_in_d42,
+                                    'override': 'smart'
+                                     }
+                                    ADDED, msg_mac = post(mac_address, 'mac')
+                                    if ADDED:
+                                        print '\n\t[!] MAC Response: '+mac + ': ' + str(msg_mac).strip()
+                                    else:
+                                        print '\n\t[!] MAC Response: '+mac + ': failed with message = ' + str(msg_mac).strip()
+                # =======  / MAC only =========#
+                
+                
+                if ipinfo:
+                    ipinfo_ip = ''.join(ipinfo).split('\n\n')
+                    for nic in ipinfo_ip:
+                        #print nic
                         if nic not in  ('', '\n'):
                             splitted = nic.split('\n')
                             tag = (splitted[0]).split()[0].rstrip(':')
@@ -335,7 +343,7 @@ def grab_and_post_inventory_data(machine_name):
                                     print '\n[!] Exception! Message was: %s ' % str(e)
                                     print '\tData: %s' % nic
                                     pass
-                                    
+                        
                         if not tag == 'lo' and ipv4_address:
                             ip = {
                             'ipaddress': ipv4_address,
@@ -367,7 +375,6 @@ def grab_and_post_inventory_data(machine_name):
                         elif not ipv4_address:
                             if DEBUG:
                                 print '\n[!] Cannot find/parse IPv4 address. Data was:\n\t%s' % nic
-
             else:
                 if DEBUG:
                     print data_err

@@ -1,4 +1,8 @@
 """
+NOTE:
+This script is obsolete.  
+Please use "nix_bsd_mac_inventory (https://github.com/device42/nix_bsd_mac_inventory)" script instead.
+
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND

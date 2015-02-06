@@ -1,3 +1,10 @@
+**NOTE:**
+**The following scripts are obsolete. Please use [`nix_bsd_mac_inventory`]( https://github.com/device42/nix_bsd_mac_inventory )  script instead.**  
+* d42\_api\_linux\_upload\_sample\_script.py  
+* d42\_api\_solaris\_sample\_script.py  
+* linux\_auto\_dics\_multi.py  
+
+
 [Device42](http://www.device42.com/) is a comprehensive data center inventory management and IP Address management software that integrates centralized password management, impact charts and applications mappings with IT asset management.
 
 This project contains sample scripts to show how to use Device42 developer APIs and populate device42 appliance with your network inventory information.

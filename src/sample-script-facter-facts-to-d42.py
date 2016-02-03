@@ -33,8 +33,8 @@ BASE_URL='https://your-device42-url'  #Please make sure there is no / in the end
 API_DEVICE_URL=BASE_URL+'/api/device/'   
 API_IP_URL =BASE_URL+'/api/ip/'          
 
-USER ='your-user-name'
-PASSWORD='your-password-here'
+USER ='your-device42-user-name'
+PASSWORD='your-device42-password-here'
 DRY_RUN = False
 
 # puppet config dir

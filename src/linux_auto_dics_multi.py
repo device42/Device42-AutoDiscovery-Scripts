@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+# IMPORTANT!!!
+# This script is deprecated. Please use: https://github.com/device42/nix_bsd_mac_inventory
+
+
 """
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF

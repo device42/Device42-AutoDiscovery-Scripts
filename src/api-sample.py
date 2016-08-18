@@ -30,13 +30,22 @@ import urllib2
 import traceback
 import base64
 import math
-BASE_URL='http://your-url-here'
+import ssl
+import functools
+BASE_URL='https://d42applianceaddress'
 
-API_DEVICE_URL=BASE_URL+'/api/device/'
-API_IP_URL    =BASE_URL+'/api/ip/'
+API_DEVICE_URL=BASE_URL+'/api/1.0/devices/'
+API_IP_URL    =BASE_URL+'/api/1.0/ips/'
 
-USER    ='put-your-user-name-here'
-PASSWORD='put-your-password-here'
+USER    ='d42username'
+PASSWORD='d42password'
+
+old_init = ssl.SSLSocket.__init__
+@functools.wraps(old_init)
+def init_with_tls1(self, *args, **kwargs):
+    kwargs['ssl_version'] = ssl.PROTOCOL_TLSv1
+    old_init(self, *args, **kwargs)
+ssl.SSLSocket.__init__ = init_with_tls1
 
 def post(url, params):
     """

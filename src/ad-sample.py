@@ -31,6 +31,8 @@ import base64
 import System
 import clr
 import math
+import ssl
+import functools
 clr.AddReference("System.DirectoryServices")
 clr.AddReference('System.Management.Automation')
 
@@ -51,6 +53,14 @@ PASSWORD='put-your-password-here'
 DRY_RUN = False # donot post just print the request that will be send
 DEBUG = True
 
+old_init = ssl.SSLSocket.__init__
+@functools.wraps(old_init)
+def init_with_tls1(self, *args, **kwargs):
+    kwargs['ssl_version'] = ssl.PROTOCOL_TLSv1
+    old_init(self, *args, **kwargs)
+ssl.SSLSocket.__init__ = init_with_tls1
+
+
 def post(url, params):
     """http post with basic-auth params is dict like object"""
     try:
@@ -69,7 +79,12 @@ def post(url, params):
             if DEBUG: print req.headers
             if DEBUG: print req.data
 
-            reponse = urllib2.urlopen(req)
+            # turn off https check
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            
+            reponse = urllib2.urlopen(req, context=ctx)
 
             if DEBUG: print '---RESPONSE---'
             if DEBUG: print reponse.getcode()
